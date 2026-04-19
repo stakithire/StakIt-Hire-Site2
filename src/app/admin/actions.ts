@@ -1,20 +1,19 @@
 
 'use server';
 
-import { getFirestore, FieldValue, runTransaction } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+import { FieldValue, runTransaction } from 'firebase-admin/firestore';
 import type { QuoteRequestWithId, ContactMessageWithId, InventoryItem, InventoryActivityWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { sendTransactionalEmail } from '@/lib/email-service';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 
 async function verifyAdmin(idToken: string) {
-    const adminAuth = getAuth(getAdminApp());
+    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     if (decodedToken.admin !== true) {
         throw new Error('Access Denied: User is not an admin.');
     }
-    return { adminFirestore: getFirestore(getAdminApp()) };
+    return decodedToken;
 }
 
 /**
@@ -25,7 +24,8 @@ export async function getAdminQuoteRequests(
     idToken: string
 ): Promise<{ success: true; data: QuoteRequestWithId[] } | { success: false; error: string }> {
   try {
-    const { adminFirestore } = await verifyAdmin(idToken);
+    await verifyAdmin(idToken);
+    const adminFirestore = getAdminFirestore();
 
     // Fetch all quote requests using the Admin SDK
     const quoteRequestsSnapshot = await adminFirestore.collectionGroup('quoteRequests').get();
@@ -59,7 +59,8 @@ export async function updateQuoteStatus(
     { customerId, quoteId, status }: { customerId: string, quoteId: string, status: QuoteRequestWithId['status'] }
 ): Promise<{ success: true } | { success: false; error: string }> {
      try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
 
         const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
         
@@ -108,7 +109,8 @@ export async function updateQuoteDetails(
     { customerId, quoteId, data }: { customerId: string, quoteId: string, data: Partial<QuoteRequestWithId> }
 ): Promise<{ success: true } | { success: false; error: string }> {
      try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
 
         // Update the document with the new data. `set` with `merge` overwrites fields in the data object.
@@ -128,7 +130,8 @@ export async function updateQuoteDetails(
 
 export async function getContactMessages(idToken: string): Promise<{ success: true; data: ContactMessageWithId[] } | { success: false; error: string }> {
     try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const messagesSnapshot = await adminFirestore.collection('contactMessages').orderBy('submittedDate', 'desc').get();
         const messages = messagesSnapshot.docs.map(doc => {
             const data = doc.data();
@@ -150,7 +153,8 @@ export async function updateMessageStatus(
     { messageId, status }: { messageId: string, status: ContactMessageWithId['status'] }
 ): Promise<{ success: true } | { success: false; error: string }> {
     try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const docRef = adminFirestore.collection('contactMessages').doc(messageId);
         await docRef.update({ status });
         revalidatePath('/admin');
@@ -163,7 +167,8 @@ export async function updateMessageStatus(
 
 export async function getInventory(idToken: string): Promise<{ success: true; data: InventoryItem[] } | { success: false; error: string }> {
     try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const inventorySnapshot = await adminFirestore.collection('inventory').get();
         const inventory = inventorySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -181,7 +186,8 @@ export async function setInventoryItem(
     { itemId, data }: { itemId: string, data: Partial<InventoryItem> }
 ): Promise<{ success: true } | { success: false; error: string }> {
     try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const docRef = adminFirestore.collection('inventory').doc(itemId);
         await docRef.set(data, { merge: true });
         revalidatePath('/admin');
@@ -194,7 +200,8 @@ export async function setInventoryItem(
 
 export async function getInventoryActivity(idToken: string): Promise<{ success: true; data: InventoryActivityWithId[] } | { success: false; error: string }> {
     try {
-        const { adminFirestore } = await verifyAdmin(idToken);
+        await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
         const activitySnapshot = await adminFirestore.collection('inventoryActivity').orderBy('date', 'desc').get();
         const activities = activitySnapshot.docs.map(doc => {
             const data = doc.data();
@@ -216,13 +223,8 @@ export async function logCrateRetirement(
     { quantity, notes }: { quantity: number; notes?: string }
 ): Promise<{ success: true } | { success: false; error: string }> {
     try {
-        const adminAuth = getAuth(getAdminApp());
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
-        if (decodedToken.admin !== true) {
-            throw new Error('Access Denied: User is not an admin.');
-        }
-
-        const adminFirestore = getFirestore(getAdminApp());
+        const decodedToken = await verifyAdmin(idToken);
+        const adminFirestore = getAdminFirestore();
 
         if (quantity <= 0) {
             return { success: false, error: 'Retirement quantity must be positive.' };

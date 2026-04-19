@@ -3,10 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { buffer } from 'micro';
-import { getFirestore } from 'firebase-admin/firestore';
 import { sendTransactionalEmail } from '@/lib/email-service';
 import type { QuoteRequestWithId } from '@/lib/types';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -15,14 +14,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-// Initialize Firebase Admin SDK
-const adminFirestore = getFirestore(getAdminApp());
-
-
 async function handleInitialPayment(session: Stripe.Checkout.Session) {
     const { quoteId, customerId } = session.metadata || {};
     if (!quoteId || !customerId) throw new Error('Missing metadata for initial payment.');
 
+    const adminFirestore = getAdminFirestore();
     const quoteRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
     await quoteRef.update({ status: 'Paid' });
     console.log(`✅ Successfully updated quote ${quoteId} to Paid.`);
@@ -55,6 +51,7 @@ async function handleExtensionPayment(session: Stripe.Checkout.Session) {
     const { quoteId, customerId, newEndDate } = session.metadata || {};
     if (!quoteId || !customerId || !newEndDate) throw new Error('Missing metadata for extension payment.');
 
+    const adminFirestore = getAdminFirestore();
     const quoteRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
     await quoteRef.update({ rentalEndDate: newEndDate });
     console.log(`✅ Successfully extended quote ${quoteId} to ${newEndDate}.`);

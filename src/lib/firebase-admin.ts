@@ -1,22 +1,58 @@
 
-import { initializeApp, getApps, App } from "firebase-admin/app";
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
-const appName = 'firebase-admin-app-[StakIt]';
+// This is a "lazy-loaded singleton" pattern.
+// It ensures that the Firebase Admin app is initialized only once.
+let adminApp: App | undefined;
 
-function initializeAdminApp(): App {
-    const existingApp = getApps().find(app => app.name === appName);
-    if (existingApp) {
-        return existingApp;
+function getAdminApp(): App {
+    if (adminApp) {
+        return adminApp;
     }
 
-    // When deployed to a Google managed environment like App Hosting,
-    // initializeApp() with no credential automatically uses the 
-    // Application Default Credentials (ADC). This is the most secure method.
-    // For local development, you will need to set up ADC by running:
-    // `gcloud auth application-default login` in your terminal.
-    return initializeApp({}, appName);
+    // Check if the app is already initialized, which can happen in some environments.
+    if (getApps().length > 0) {
+        adminApp = getApps()[0];
+        return adminApp;
+    }
+    
+    // If not initialized, try to use environment variables.
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+    };
+
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+         adminApp = initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } else {
+        // Fallback for App Hosting's automatic credentials
+        console.log("Initializing Firebase Admin with default credentials.");
+        adminApp = initializeApp();
+    }
+    
+    return adminApp;
 }
 
-export function getAdminApp(): App {
-    return initializeAdminApp();
+/**
+ * Gets the Firebase Admin Auth service instance.
+ * This function ensures the app is initialized before getting the service.
+ * @returns {Auth} The Firebase Admin Auth service.
+ */
+export function getAdminAuth(): Auth {
+    return getAuth(getAdminApp());
+}
+
+/**
+ * Gets the Firebase Admin Firestore service instance.
+ * This function ensures the app is initialized before getting the service.
+ * @returns {Firestore} The Firebase Admin Firestore service.
+ */
+export function getAdminFirestore(): Firestore {
+    return getFirestore(getAdminApp());
 }

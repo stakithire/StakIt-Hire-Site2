@@ -1,22 +1,18 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import Stripe from 'stripe';
-import { getFirestore } from 'firebase-admin/firestore';
 import type { QuoteRequestWithId } from '@/lib/types';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { calculateQuoteTotal } from '@/lib/quote-calculator';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
-// Initialize Firebase Admin SDK
-const adminFirestore = getFirestore(getAdminApp());
-
-
 export async function POST(req: NextRequest) {
   try {
     const { quoteId, customerId } = await req.json();
+    const adminFirestore = getAdminFirestore();
 
     if (!quoteId || !customerId) {
       return NextResponse.json({ error: 'Missing quoteId or customerId' }, { status: 400 });

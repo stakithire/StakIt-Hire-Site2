@@ -1,15 +1,15 @@
 
 import { NextResponse } from 'next/server';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import { OAuth2Client } from 'google-auth-library';
 
 const authClient = new OAuth2Client();
 
 // Helper function to recursively delete a collection in batches.
 // This is necessary because you can't delete a collection directly in the Admin SDK.
-async function deleteCollection(collectionPath: string, firestore: FirebaseFirestore.Firestore) {
-    const collectionRef = firestore.collection(collectionPath);
+async function deleteCollection(collectionPath: string) {
+    const adminFirestore = getAdminFirestore();
+    const collectionRef = adminFirestore.collection(collectionPath);
     // Process in batches of 100 to stay within limits
     const query = collectionRef.limit(100);
 
@@ -19,6 +19,7 @@ async function deleteCollection(collectionPath: string, firestore: FirebaseFires
 
     async function deleteQueryBatch(query: FirebaseFirestore.Query, resolve: () => void, reject: (reason?: any) => void) {
         try {
+            const adminFirestore = getAdminFirestore();
             const snapshot = await query.get();
 
             if (snapshot.size === 0) {
@@ -28,7 +29,7 @@ async function deleteCollection(collectionPath: string, firestore: FirebaseFires
             }
 
             // Delete documents in a batch
-            const batch = firestore.batch();
+            const batch = adminFirestore.batch();
             snapshot.docs.forEach((doc) => {
                 batch.delete(doc.ref);
             });
@@ -82,8 +83,7 @@ export async function GET(request: Request) {
 
     // --- Deletion Logic ---
     try {
-        const firestore = getFirestore(getAdminApp());
-
+        const adminFirestore = getAdminFirestore();
         // Calculate the cutoff date: 12 months ago
         const now = new Date();
         const cutoffDate = new Date(now.setFullYear(now.getFullYear() - 1));
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
         // Query for all quote requests that ended over a year ago.
         // The rentalEndDate is stored as an ISO string, which is lexicographically sortable.
-        const oldQuotesQuery = firestore.collectionGroup('quoteRequests')
+        const oldQuotesQuery = adminFirestore.collectionGroup('quoteRequests')
             .where('rentalEndDate', '<', cutoffDate.toISOString());
             
         const oldQuotesSnapshot = await oldQuotesQuery.get();
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
             
             // 1. Delete the 'evidence' subcollection associated with the quote.
             const evidencePath = `${doc.ref.path}/evidence`;
-            deletionPromises.push(deleteCollection(evidencePath, firestore));
+            deletionPromises.push(deleteCollection(evidencePath));
 
             // 2. Delete the quote document itself.
             deletionPromises.push(doc.ref.delete());

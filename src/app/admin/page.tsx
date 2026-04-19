@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -135,6 +133,76 @@ const getTrackableItemsFromQuote = (items: QuoteRequestWithId['items']): Map<str
     });
 
     return trackableMap;
+};
+
+type AvailabilityResult = { name: string; status: 'In Stock' | 'Low Stock' | 'Out of Stock'; available: number; required: number };
+
+/**
+ * Pre-calculates inventory availability for all quote requests to avoid
+ * expensive re-computation within each list item.
+ */
+const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory: InventoryItem[]): Map<string, AvailabilityResult[]> => {
+    const availabilities = new Map<string, AvailabilityResult[]>();
+    if (!inventory.length) return availabilities;
+
+    const inventoryMap = new Map<string, number>(inventory.map(i => [i.id, i.quantity]));
+    const approvedRequests = allRequests.filter(r => r.status === 'Approved' || r.status === 'Paid');
+
+    allRequests.forEach(request => {
+        const isDateInRange = (date: Date, start: Date, end: Date) => {
+            const time = date.getTime();
+            return time >= start.getTime() && time <= end.getTime();
+        };
+
+        const requestStart = new Date(request.rentalStartDate);
+        const requestEnd = new Date(request.rentalEndDate);
+
+        const requiredItems = getTrackableItemsFromQuote(request.items);
+        if (requiredItems.size === 0) {
+            availabilities.set(request.id, []);
+            return;
+        }
+
+        const hiredOutDuringPeriod = new Map<string, number>();
+        const otherApprovedRequests = approvedRequests.filter(r => r.id !== request.id);
+
+        otherApprovedRequests.forEach(otherReq => {
+            const otherStart = new Date(otherReq.rentalStartDate);
+            const otherEnd = new Date(otherReq.rentalEndDate);
+
+            const overlaps = isDateInRange(requestStart, otherStart, otherEnd) || 
+                             isDateInRange(requestEnd, otherStart, otherEnd) || 
+                             isDateInRange(otherStart, requestStart, requestEnd);
+
+            if (overlaps) {
+                const otherTrackables = getTrackableItemsFromQuote(otherReq.items);
+                otherTrackables.forEach((quantity, itemId) => {
+                    hiredOutDuringPeriod.set(itemId, (hiredOutDuringPeriod.get(itemId) || 0) + quantity);
+                });
+            }
+        });
+        
+        const availabilityResult: AvailabilityResult[] = [];
+        
+        requiredItems.forEach((required, itemId) => {
+            const totalStock = inventoryMap.get(itemId) || 0;
+            const hiredOut = hiredOutDuringPeriod.get(itemId) || 0;
+            const availableNow = totalStock - hiredOut;
+            const remainingAfterThis = availableNow - required;
+
+            let status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 'In Stock';
+            if (availableNow < required) {
+                status = 'Out of Stock';
+            } else if (totalStock > 0 && remainingAfterThis / totalStock <= 0.2) { // Low stock if < 20% remains
+                status = 'Low Stock';
+            }
+            availabilityResult.push({ name: inventory.find(i => i.id === itemId)?.name || itemId, status, available: availableNow, required });
+        });
+        
+        availabilities.set(request.id, availabilityResult);
+    });
+
+    return availabilities;
 };
 
 
@@ -361,7 +429,7 @@ function RentalCalendar({ requests }: { requests: QuoteRequestWithId[] }) {
     );
 }
 
-function QuoteRequestDetails({ request, allRequests, inventory, onDamageLogged }: { request: QuoteRequestWithId; allRequests: QuoteRequestWithId[]; inventory: InventoryItem[]; onDamageLogged: () => void; }) {
+function QuoteRequestDetails({ request, availability, onDamageLogged }: { request: QuoteRequestWithId; availability: AvailabilityResult[]; onDamageLogged: () => void; }) {
     const formatPrice = (price: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
     
     const { items, rentalStartDate, rentalEndDate, stakitShield, customerName, customerEmail, dropOffAddress, collectionAddress, projectDescription, deliveryConfirmationTimestamp, status } = request;
@@ -371,57 +439,6 @@ function QuoteRequestDetails({ request, allRequests, inventory, onDamageLogged }
     }, [request]);
 
     const { total } = calculation;
-
-    const availability = useMemo(() => {
-        const isDateInRange = (date: Date, start: Date, end: Date) => {
-            const time = date.getTime();
-            return time >= start.getTime() && time <= end.getTime();
-        };
-
-        const requestStart = new Date(request.rentalStartDate);
-        const requestEnd = new Date(request.rentalEndDate);
-
-        const inventoryMap = new Map<string, number>(inventory.map(i => [i.id, i.quantity]));
-        
-        // 1. Get required items for THIS request
-        const requiredItems = getTrackableItemsFromQuote(request.items);
-
-        // 2. Calculate equipment hired out during the requested period by OTHER approved requests
-        const hiredOutDuringPeriod = new Map<string, number>();
-        const otherApprovedRequests = allRequests.filter(r => r.id !== request.id && (r.status === 'Approved' || r.status === 'Paid'));
-
-        otherApprovedRequests.forEach(otherReq => {
-            const otherStart = new Date(otherReq.rentalStartDate);
-            const otherEnd = new Date(otherReq.rentalEndDate);
-
-            if (isDateInRange(requestStart, otherStart, otherEnd) || isDateInRange(requestEnd, otherStart, otherEnd) || isDateInRange(otherStart, requestStart, requestEnd)) {
-                const otherTrackables = getTrackableItemsFromQuote(otherReq.items);
-                otherTrackables.forEach((quantity, itemId) => {
-                    hiredOutDuringPeriod.set(itemId, (hiredOutDuringPeriod.get(itemId) || 0) + quantity);
-                });
-            }
-        });
-
-        // 3. Determine availability for each required item
-        const availabilityResult: { name: string, status: 'In Stock' | 'Low Stock' | 'Out of Stock', available: number, required: number }[] = [];
-        
-        requiredItems.forEach((required, itemId) => {
-            const totalStock = inventoryMap.get(itemId) || 0;
-            const hiredOut = hiredOutDuringPeriod.get(itemId) || 0;
-            const availableNow = totalStock - hiredOut;
-            const remainingAfterThis = availableNow - required;
-
-            let status: 'In Stock' | 'Low Stock' | 'Out of Stock' = 'In Stock';
-            if (availableNow < required) {
-                status = 'Out of Stock';
-            } else if (totalStock > 0 && remainingAfterThis / totalStock <= 0.2) { // Low stock if < 20% remains
-                status = 'Low Stock';
-            }
-            availabilityResult.push({ name: inventory.find(i => i.id === itemId)?.name || itemId, status, available: availableNow, required });
-        });
-        
-        return availabilityResult;
-    }, [request, allRequests, inventory]);
 
     return (
         <div className="p-4 space-y-6">
@@ -532,7 +549,7 @@ function QuoteRequestDetails({ request, allRequests, inventory, onDamageLogged }
     );
 }
 
-function QuoteRequestList({ requests, allRequests, inventory, onStatusChange, onEditQuote, onConfirmDelivery, onDamageLogged }: { requests: QuoteRequestWithId[]; allRequests: QuoteRequestWithId[]; inventory: InventoryItem[]; onStatusChange: (quoteId: string, customerId: string, status: QuoteRequestWithId['status']) => void; onEditQuote: (quote: QuoteRequestWithId) => void; onConfirmDelivery: (quote: QuoteRequestWithId) => void; onDamageLogged: () => void; }) {
+function QuoteRequestList({ requests, allAvailabilities, onStatusChange, onEditQuote, onConfirmDelivery, onDamageLogged }: { requests: QuoteRequestWithId[]; allAvailabilities: Map<string, AvailabilityResult[]>; onStatusChange: (quoteId: string, customerId: string, status: QuoteRequestWithId['status']) => void; onEditQuote: (quote: QuoteRequestWithId) => void; onConfirmDelivery: (quote: QuoteRequestWithId) => void; onDamageLogged: () => void; }) {
     return (
          <Accordion type="single" collapsible className="w-full space-y-4">
             {requests.length > 0 ? requests.map((request) => (
@@ -551,7 +568,7 @@ function QuoteRequestList({ requests, allRequests, inventory, onStatusChange, on
                          </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                        <QuoteRequestDetails request={request} allRequests={allRequests} inventory={inventory} onDamageLogged={onDamageLogged}/>
+                        <QuoteRequestDetails request={request} availability={allAvailabilities.get(request.id) || []} onDamageLogged={onDamageLogged}/>
                         <div className="flex justify-end gap-2 p-4 border-t bg-background">
                              { (request.status === 'Paid' || request.status === 'Delivered') && !request.deliveryConfirmationTimestamp && (
                                 <Button variant="secondary" onClick={() => onConfirmDelivery(request)}>
@@ -1166,6 +1183,10 @@ export default function AdminDashboard() {
         });
     }, [inventory, allPossibleInventoryItems]);
 
+    const allAvailabilities = useMemo(() => {
+        return calculateAllAvailabilities(requests, mergedInventory);
+    }, [requests, mergedInventory]);
+
     const handleUpdateStatus = async (quoteId: string, customerId: string, status: QuoteRequestWithId['status']) => {
         if (!idToken) return;
         const originalStatus = requests.find(r => r.id === quoteId)?.status;
@@ -1295,8 +1316,7 @@ export default function AdminDashboard() {
                         <CardContent>
                              <QuoteRequestList 
                                 requests={filteredRequests} 
-                                allRequests={requests} 
-                                inventory={inventory} 
+                                allAvailabilities={allAvailabilities} 
                                 onStatusChange={handleUpdateStatus}
                                 onEditQuote={(quote) => setEditingQuote(quote)}
                                 onConfirmDelivery={(quote) => setConfirmingQuote(quote)}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -22,6 +23,12 @@ import { makeMeAdmin } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
 
+// !!! IMPORTANT FOR ADMIN SETUP !!!
+// To grant yourself admin privileges, replace the placeholder below
+// with your own Firebase User ID (UID). You can find your UID in the
+// Firebase Console under Authentication > Users.
+const ADMIN_UID = 'TdlmOovYUcMes6j6bjuP4Crpz8Y2';
+
 export function AppHeader() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -37,9 +44,14 @@ export function AppHeader() {
   // --- ONE-TIME ADMIN GRANT SCRIPT ---
   useEffect(() => {
     const runAdminGrant = async () => {
-      // Conditions to run: User is logged in, not anonymous, is the target admin email,
+      // Do not run if the placeholder is not replaced.
+      if (ADMIN_UID === 'REPLACE_WITH_YOUR_FIREBASE_UID') {
+          return;
+      }
+      
+      // Conditions to run: User is logged in, not anonymous, has the target admin UID,
       // and we have confirmed they are NOT an admin yet.
-      if (user && !user.isAnonymous && user.email === 'stakithire@gmail.com' && !isAdmin && !isCheckingAdmin) {
+      if (user && !user.isAnonymous && user.uid === ADMIN_UID && !isAdmin && !isCheckingAdmin) {
         
         // Use sessionStorage to ensure this runs only once per session to avoid spamming.
         const hasRunKey = `admin_grant_attempted_${user.uid}`;
@@ -48,9 +60,9 @@ export function AppHeader() {
         }
         sessionStorage.setItem(hasRunKey, 'true');
 
-        console.log('Attempting to grant admin role automatically...');
+        console.log('Attempting to grant admin role automatically via UID...');
 
-        const result = await makeMeAdmin();
+        const result = await makeMeAdmin(user.uid);
 
         if (result.success) {
           toast({
@@ -98,7 +110,6 @@ export function AppHeader() {
     if (!auth) return;
     try {
       await signOut(auth);
-      initiateAnonymousSignIn(auth);
     } catch (error) {
       console.error("Error signing out", error);
     }

@@ -1,8 +1,7 @@
 
 'use server';
 
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import type { QuoteRequestWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -11,7 +10,7 @@ export async function getQuoteForConfirmation(
     customerId: string
 ): Promise<{ success: true; data: QuoteRequestWithId } | { success: false; error: string }> {
     try {
-        const adminFirestore = getFirestore(getAdminApp());
+        const adminFirestore = getAdminFirestore();
         const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
         const docSnap = await docRef.get();
 
@@ -40,7 +39,7 @@ export async function confirmDelivery(
     customerId: string
 ): Promise<{ success: true } | { success: false; error: string }> {
     try {
-        const adminFirestore = getFirestore(getAdminApp());
+        const adminFirestore = getAdminFirestore();
         const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
 
         await docRef.update({

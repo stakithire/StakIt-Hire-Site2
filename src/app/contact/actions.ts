@@ -1,11 +1,10 @@
 
 'use server';
 
-import { getFirestore } from 'firebase-admin/firestore';
+import { getAdminFirestore } from '@/lib/firebase-admin';
 import type { ContactMessage } from '@/lib/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { getAdminApp } from '@/lib/firebase-admin';
 
 const contactFormSchema = z.object({
   name: z.string().min(1, 'Name is required.'),
@@ -17,9 +16,8 @@ export async function submitContactForm(
     formData: z.infer<typeof contactFormSchema>
 ): Promise<{ success: true } | { success: false; error: string }> {
      try {
-        const adminFirestore = getFirestore(getAdminApp());
-        
         const validatedData = contactFormSchema.parse(formData);
+        const adminFirestore = getAdminFirestore();
 
         const messageData: ContactMessage = {
             ...validatedData,

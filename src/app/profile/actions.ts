@@ -1,15 +1,13 @@
 
 'use server';
 
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 import { revalidatePath } from 'next/cache';
-import { getAdminApp } from '@/lib/firebase-admin';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 
 async function verifyUser(idToken: string) {
-    const adminAuth = getAuth(getAdminApp());
+    const adminAuth = getAdminAuth();
     const decodedToken = await adminAuth.verifyIdToken(idToken);
-    return { adminFirestore: getFirestore(getAdminApp()), userUid: decodedToken.uid };
+    return decodedToken.uid;
 }
 
 interface ProfileData {
@@ -24,8 +22,8 @@ export async function updateCustomerProfile(
     profileData: ProfileData
 ): Promise<{ success: true } | { success: false; error: string }> {
      try {
-        const { adminFirestore, userUid } = await verifyUser(idToken);
-
+        const userUid = await verifyUser(idToken);
+        const adminFirestore = getAdminFirestore();
         const customerRef = adminFirestore.collection('customers').doc(userUid);
         
         // Prepare data for update, removing any undefined fields
