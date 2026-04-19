@@ -1,0 +1,12 @@
+# Build output
+.next
+
+# Dependencies
+node_modules
+
+# Environment variables
+.env
+.env.local
+
+# Secret key files
+service-account-key.json

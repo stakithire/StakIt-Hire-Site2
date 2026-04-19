@@ -1,0 +1,228 @@
+
+{
+  "entities": {
+    "QuoteRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QuoteRequest",
+      "type": "object",
+      "description": "Represents a customer's request for a quote to rent equipment.",
+      "properties": {
+        "projectDescription": {
+          "type": "string",
+          "description": "A description of the project."
+        },
+        "items": {
+          "type": "array",
+          "description": "The items included in the quote.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" },
+              "type": { "type": "string", "enum": ["hire", "purchase"] },
+              "followOnPrice": { "type": "number" },
+              "sizes": {
+                "type": "array",
+                "description": "Specifies sizes for items like TV protectors.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["id", "name", "quantity", "price"]
+          }
+        },
+        "rentalStartDate": {
+          "type": "string",
+          "description": "The date the rental period starts.",
+          "format": "date-time"
+        },
+        "rentalEndDate": {
+          "type": "string",
+          "description": "The date the rental period ends.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the quote request (e.g., 'Submitted', 'In Review', 'Quoted', 'Accepted', 'Rejected', 'Paid').",
+          "enum": ["Pending", "In Review", "Approved", "Rejected", "Completed", "Paid", "Delivered"]
+        },
+        "submittedDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the quote was submitted"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "The ID of the customer who submitted the quote."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "The name of the customer."
+        },
+        "customerEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "The email of the customer."
+        },
+        "dropOffAddress": {
+            "type": "string",
+            "description": "The address for equipment drop-off."
+        },
+        "collectionAddress": {
+            "type": "string",
+            "description": "The address for equipment collection."
+        },
+        "stakitShield": {
+            "type": "boolean",
+            "description": "Indicates if the customer opted for the StakIt Shield protection plan."
+        },
+        "deliveryConfirmationTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The server-generated timestamp when the customer confirmed delivery."
+        },
+        "damagedCrates": {
+            "type": "number",
+            "description": "The number of crates reported as damaged for this order."
+        }
+      },
+      "required": [
+        "items",
+        "rentalStartDate",
+        "rentalEndDate",
+        "status",
+        "submittedDate",
+        "customerId",
+        "customerName",
+        "customerEmail",
+        "dropOffAddress",
+        "collectionAddress"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer who can request quotes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the customer (matches Firebase Auth UID)."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the customer.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The phone number of the customer."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address of the customer."
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "type": "object",
+      "description": "Represents an inquiry submitted through the contact form.",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "message": { "type": "string" },
+        "submittedDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["New", "Read", "Archived"] }
+      },
+      "required": ["name", "email", "message", "submittedDate", "status"]
+    },
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "type": "object",
+      "description": "Represents the quantity of a single inventory item.",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the item." },
+        "quantity": { "type": "number", "description": "The total quantity available in stock." },
+        "type": { "type": "string", "enum": ["crate_pool", "item"], "description": "Type of inventory item (e.g., 'crate_pool' for total crates, 'item' for individual equipment)." }
+      },
+      "required": ["name", "quantity", "type"]
+    },
+    "OrderEvidence": {
+      "title": "Order Evidence",
+      "type": "object",
+      "description": "Represents a photo or document uploaded as evidence for a quote request.",
+      "properties": {
+        "url": { "type": "string", "format": "uri", "description": "The public URL of the uploaded file in Firebase Storage." },
+        "fileName": { "type": "string", "description": "The name of the uploaded file." },
+        "mimeType": { "type": "string", "description": "The MIME type of the uploaded file." },
+        "category": { "type": "string", "enum": ["drop-off", "collection", "damage", "report"], "description": "The category of the evidence." },
+        "uploadedAt": { "type": "string", "format": "date-time", "description": "The timestamp when the evidence was uploaded." },
+        "uploadedBy": { "type": "string", "description": "The UID of the admin who uploaded the evidence." }
+      },
+      "required": ["url", "fileName", "mimeType", "category", "uploadedAt", "uploadedBy"]
+    },
+     "InventoryActivity": {
+      "title": "Inventory Activity",
+      "type": "object",
+      "description": "Represents a single change to inventory levels, like retiring stock.",
+      "properties": {
+        "date": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["add", "retire", "initial_stock"] },
+        "itemId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "notes": { "type": "string" },
+        "adminId": { "type": "string", "description": "The UID of the admin who performed the action." }
+      },
+      "required": ["date", "type", "itemId", "quantity", "adminId"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/backend/entities/Customer" },
+      "description": "Stores customer profiles, document ID is equal to the Firebase Auth UID.  Enables path-based ownership."
+    },
+    "/customers/{customerId}/quoteRequests/{quoteRequestId}": {
+      "schema": { "$ref": "#/backend/entities/QuoteRequest" },
+      "description": "Stores quote requests for each customer. Includes denormalized 'customerId' for authorization independence."
+    },
+    "/customers/{customerId}/quoteRequests/{quoteRequestId}/evidence/{evidenceId}": {
+      "schema": { "$ref": "#/backend/entities/OrderEvidence" },
+      "description": "Stores photos and documents related to an order. Records are immutable after creation."
+    },
+    "/contactMessages/{messageId}": {
+      "schema": { "$ref": "#/backend/entities/ContactMessage" },
+      "description": "Stores all incoming contact form submissions."
+    },
+    "/inventory/{itemId}": {
+      "schema": { "$ref": "#/backend/entities/InventoryItem" },
+      "description": "Stores inventory levels for all rental equipment. Document ID is the unique ID of the item (e.g., 'crates', 'service-09')."
+    },
+    "/inventoryActivity/{activityId}": {
+      "schema": { "$ref": "#/backend/entities/InventoryActivity" },
+      "description": "Logs changes to inventory, such as retiring old stock. Records are immutable."
+    }
+  }
+}

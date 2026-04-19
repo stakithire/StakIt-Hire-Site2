@@ -1,0 +1,143 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Path-Specific Rules ---
+
+    /**
+     * @description Enforces strict user-ownership for customer profiles.
+     * @path /customers/{customerId}
+     */
+    match /customers/{customerId} {
+      allow get: if isOwner(customerId);
+      allow list: if false; // Users should not be able to list other customer profiles.
+      allow create: if isOwner(customerId);
+      allow update, delete: if isExistingOwner(customerId);
+    }
+    
+    /**
+     * @description Rules for individual quote requests and their subcollections.
+     * @path /customers/{customerId}/quoteRequests/{quoteRequestId}
+     */
+    match /customers/{customerId}/quoteRequests/{quoteRequestId} {
+      // READ: An owner can get their own request. An admin can get ANY request.
+      allow get: if isOwner(customerId) || isAdmin();
+      
+      // LIST (Sub-collection): An owner can list their own requests. Admins use the collection group rule below.
+      allow list: if isOwner(customerId); 
+      
+      // CREATE: An owner can create a request in their own subcollection, ensuring the customerId matches.
+      allow create: if isOwner(customerId) && request.resource.data.customerId == customerId;
+      
+      // UPDATE (Owner): An owner can update their request, but cannot change the status or the customerId.
+      allow update: if isExistingOwner(customerId) 
+                    && request.resource.data.customerId == resource.data.customerId 
+                    && !isStatusChanging();
+      
+      // UPDATE (Admin): An admin can update any part of the quote. The server-side actions provide the business logic guardrails.
+      allow update: if isAdmin();
+      
+      // DELETE: An owner can delete their own request.
+      allow delete: if isExistingOwner(customerId);
+
+      /**
+       * @description Rules for order evidence (photos, documents).
+       * Evidence is immutable once created to ensure a secure audit trail.
+       * @path /customers/{customerId}/quoteRequests/{quoteRequestId}/evidence/{evidenceId}
+       */
+      match /evidence/{evidenceId} {
+        // READ: Admins can view any evidence. Owners can view evidence for their own quotes.
+        allow get, list: if isAdmin() || isOwner(customerId);
+        
+        // CREATE: Only admins can add new evidence. Data must conform to schema.
+        allow create: if isAdmin() && isEvidenceCreateDataValid();
+        
+        // UPDATE, DELETE: Forbidden for all users to ensure immutability.
+        allow update, delete: if false;
+      }
+    }
+
+    /**
+     * @description Rules for contact form messages.
+     * @path /contactMessages/{messageId}
+     */
+    match /contactMessages/{messageId} {
+      // Any authenticated user (including anonymous) can create a message.
+      allow create: if isSignedIn();
+      // Only admins can read, list, or manage messages.
+      allow read, list, update, delete: if isAdmin();
+    }
+    
+    /**
+     * @description Rules for inventory management.
+     * @path /inventory/{itemId}
+     */
+    match /inventory/{itemId} {
+      // Only admins can read or write inventory levels.
+      allow read, write: if isAdmin();
+    }
+
+    /**
+     * @description Rules for inventory activity logs. Logs are immutable.
+     * @path /inventoryActivity/{activityId}
+     */
+    match /inventoryActivity/{activityId} {
+      allow list, get: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+
+    // --- Collection Group Rules ---
+    
+    /**
+     * @description Allows admins to perform 'list' queries across the entire 'quoteRequests' collection group.
+     * This is essential for the admin dashboard to fetch all requests.
+     * This rule does NOT grant read access to the documents themselves; 'get' permission is handled on the path itself.
+     */
+    match /{path=**}/quoteRequests/{quoteRequestId} {
+      allow list: if isAdmin();
+    }
+
+
+    // --- Helper Functions ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+    
+    /**
+     * @description Checks if the 'status' field's value is different between the request and the existing resource.
+     */
+    function isStatusChanging() {
+        // has() check is important because status is not always in the request data
+        return request.resource.data.keys().has('status') && request.resource.data.status != resource.data.status;
+    }
+
+    /**
+     * @description Validates the data for a new evidence document on create.
+     */
+    function isEvidenceCreateDataValid() {
+      let data = request.resource.data;
+      return data.url is string &&
+             data.fileName is string &&
+             data.mimeType is string &&
+             data.category in ['drop-off', 'collection', 'damage', 'report'] &&
+             data.uploadedAt == request.time && // Enforce server-side timestamp
+             data.uploadedBy == request.auth.uid;
+    }
+  }
+}

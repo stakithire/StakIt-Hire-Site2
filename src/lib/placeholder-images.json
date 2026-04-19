@@ -1,0 +1,52 @@
+{
+  "placeholderImages": [
+    {
+      "id": "moving-boxes",
+      "description": "A stack of plastic moving containers.",
+      "imageUrl": "https://live.staticflickr.com/65535/54902437847_d2e09c1270_c.jpg",
+      "imageHint": "plastic containers"
+    },
+    {
+      "id": "mattress-protector",
+      "description": "A mattress with a protective cover on it.",
+      "imageUrl": "https://live.staticflickr.com/65535/54902446962_1e9c47f270_c.jpg",
+      "imageHint": "mattress protector"
+    },
+    {
+      "id": "tv-box",
+      "description": "A television screen.",
+      "imageUrl": "https://live.staticflickr.com/65535/54903623374_a3c6147c40_m.jpg",
+      "imageHint": "modern tv"
+    },
+    {
+      "id": "moving-blanket",
+      "description": "A thick blanket used to protect furniture during a move.",
+      "imageUrl": "https://live.staticflickr.com/65535/54903594603_41448dfa36_m.jpg",
+      "imageHint": "moving blanket"
+    },
+    {
+      "id": "bubble-wrap",
+      "description": "A roll of bubble wrap for protecting fragile items.",
+      "imageUrl": "https://live.staticflickr.com/65535/54903626724_f919921e2e_m.jpg",
+      "imageHint": "bubble wrap"
+    },
+    {
+      "id": "homepage-watermark",
+      "description": "A background watermark for the homepage",
+      "imageUrl": "/watermark.png",
+      "imageHint": "subtle background"
+    },
+    {
+      "id": "hero-background",
+      "description": "A bright, welcoming image of someone moving into a new home.",
+      "imageUrl": "/my-hero-image.png",
+      "imageHint": "moving home"
+    },
+    {
+      "id": "hand-trolley",
+      "description": "A hand trolley for moving heavy items.",
+      "imageUrl": "https://live.staticflickr.com/65535/54917519007_8c46712b37_m.jpg",
+      "imageHint": "hand trolley"
+    }
+  ]
+}
