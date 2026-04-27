@@ -1,7 +1,8 @@
 
 'use server';
+const db = getFirestore();
 
-import { FieldValue, runTransaction } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import type { QuoteRequestWithId, ContactMessageWithId, InventoryItem, InventoryActivityWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { sendTransactionalEmail } from '@/lib/email-service';
@@ -230,7 +231,7 @@ export async function logCrateRetirement(
             return { success: false, error: 'Retirement quantity must be positive.' };
         }
 
-        await runTransaction(adminFirestore, async (transaction) => {
+        await adminFirestore.runTransaction(async (transaction) => {
             const inventoryRef = adminFirestore.collection('inventory').doc('crates');
             const inventoryDoc = await transaction.get(inventoryRef);
 
