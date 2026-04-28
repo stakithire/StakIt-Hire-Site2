@@ -563,7 +563,12 @@ function QuoteRequestList({ requests, allAvailabilities, onStatusChange, onEditQ
                                 <p className="text-xs text-muted-foreground">{request.projectDescription || `Request ID: ${request.id}`}</p>
                             </div>
                             <div className="hidden md:block text-muted-foreground">
-                                {new Date(request.submittedDate).toLocaleDateString()}
+  {
+    typeof request.submittedDate === 'string'
+      ? new Date(request.submittedDate).toLocaleDateString()
+      : 'Pending'
+  }
+
                             </div>
                          </div>
                     </AccordionTrigger>
