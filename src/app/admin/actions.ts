@@ -1,6 +1,7 @@
 
 'use server';
 
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import type { QuoteRequestWithId, ContactMessageWithId, InventoryItem, InventoryActivityWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
