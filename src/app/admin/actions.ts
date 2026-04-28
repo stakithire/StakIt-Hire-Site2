@@ -1,12 +1,10 @@
 
 'use server';
-const db = getFirestore();
 
-import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import type { QuoteRequestWithId, ContactMessageWithId, InventoryItem, InventoryActivityWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { sendTransactionalEmail } from '@/lib/email-service';
-import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 
 async function verifyAdmin(idToken: string) {
     const adminAuth = getAdminAuth();
@@ -46,10 +44,16 @@ export async function getAdminQuoteRequests(
 
     return { success: true, data: quoteRequests };
 
-  } catch (error: any) {
+} catch (error: unknown) {
     console.error('Error fetching admin quote requests:', error);
-    return { success: false, error: error.message || 'An unknown error occurred.' };
-  }
+
+    const message =
+        error instanceof Error
+            ? error.message
+            : 'An unknown error occurred.';
+
+    return { success: false, error: message };
+}
 }
 
 /**
