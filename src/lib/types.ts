@@ -25,7 +25,7 @@ export type QuoteRequest = {
   rentalStartDate: string;
   rentalEndDate: string;
   status: 'Pending' | 'In Review' | 'Approved' | 'Rejected' | 'Completed' | 'Paid' | 'Delivered';
-  submittedDate: string | FieldValue;
+  submittedDate: string;
   customerId: string;
   customerName: string | null;
   customerEmail: string | null;
@@ -42,7 +42,7 @@ export type ContactMessage = {
   name: string;
   email: string;
   message: string;
-  submittedDate: string | FieldValue;
+  submittedDate: string;
   status: 'New' | 'Read' | 'Archived';
 };
 

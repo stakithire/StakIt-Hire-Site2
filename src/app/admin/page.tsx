@@ -657,7 +657,11 @@ function ContactMessageList({ messages, onStatusChange }: { messages: ContactMes
                                             <p className="text-xs text-muted-foreground">{message.email}</p>
                                         </div>
                                         <div className="hidden sm:block text-xs text-muted-foreground">
-                                            {new Date(message.submittedDate).toLocaleString()}
+                                        {
+  typeof message.submittedDate === 'string'
+    ? new Date(message.submittedDate).toLocaleString()
+    : 'Pending'
+}
                                         </div>
                                     </div>
                                 </AccordionTrigger>
