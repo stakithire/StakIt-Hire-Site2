@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,11 +81,15 @@ function QuoteHistory() {
       <CardContent>
         {quoteRequests && quoteRequests.length > 0 ? (
           <ul className="space-y-4">
-            {quoteRequests.sort((a,b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime()).map(request => (
+            {quoteRequests.sort((a,b) => {
+              const dateA = a.submittedDate ? new Date(a.submittedDate).getTime() : 0;
+              const dateB = b.submittedDate ? new Date(b.submittedDate).getTime() : 0;
+              return dateB - dateA;
+            }).map(request => (
               <li key={request.id} className="p-4 rounded-lg border bg-muted/50 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                 <div>
-                    <p className="font-semibold">{request.projectDescription || `Request from ${new Date(request.submittedDate).toLocaleDateString()}`}</p>
-                    <p className="text-sm text-muted-foreground">Submitted: {new Date(request.submittedDate).toLocaleDateString()}</p>
+                    <p className="font-semibold">{request.projectDescription || `Request from ${request.submittedDate ? new Date(request.submittedDate).toLocaleDateString() : 'Unknown Date'}`}</p>
+                    <p className="text-sm text-muted-foreground">Submitted: {request.submittedDate ? new Date(request.submittedDate).toLocaleDateString() : 'N/A'}</p>
                 </div>
                  <div className="flex items-center gap-4">
                     <Badge variant="outline" className={cn('whitespace-nowrap', statusStyles[request.status])}>

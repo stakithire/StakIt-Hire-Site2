@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -22,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { calculateQuoteTotal } from '@/lib/quote-calculator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { EditQuoteForm } from '@/components/admin/edit-quote-form';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Image from 'next/image';
@@ -41,7 +42,7 @@ const quoteStatusStyles: { [key: string]: string } = {
 };
 
 const messageStatusStyles: { [key: string]: string } = {
-  New: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800',
+  New: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-300 dark:border-blue-800',
   Read: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-800',
   Archived: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-800',
 };
@@ -55,11 +56,6 @@ const inventoryStatusStyles: { [key: string]: { icon: React.ElementType, style: 
 
 // --- HELPER FUNCTIONS ---
 
-/**
- * A helper function that unpacks a quote request's items (including bundles)
- * into a map of individual, trackable inventory item IDs and their total quantities.
- * This is the source of truth for inventory calculations.
- */
 const getTrackableItemsFromQuote = (items: QuoteRequestWithId['items']): Map<string, number> => {
     const trackableMap = new Map<string, number>();
     const allServicesAndBoxes = [...boxHireServices, ...otherServices, ...protectionAddOns, ...tvProtectionAddOns, ...inventoryTrackedTvProtectionAddOns, ...inventoryTrackedReusableProtectors];
@@ -137,10 +133,6 @@ const getTrackableItemsFromQuote = (items: QuoteRequestWithId['items']): Map<str
 
 type AvailabilityResult = { name: string; status: 'In Stock' | 'Low Stock' | 'Out of Stock'; available: number; required: number };
 
-/**
- * Pre-calculates inventory availability for all quote requests to avoid
- * expensive re-computation within each list item.
- */
 const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory: InventoryItem[]): Map<string, AvailabilityResult[]> => {
     const availabilities = new Map<string, AvailabilityResult[]>();
     if (!inventory.length) return availabilities;
@@ -154,8 +146,8 @@ const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory
             return time >= start.getTime() && time <= end.getTime();
         };
 
-        const requestStart = new Date(request.rentalStartDate);
-        const requestEnd = new Date(request.rentalEndDate);
+        const requestStart = new Date(request.rentalStartDate as string);
+        const requestEnd = new Date(request.rentalEndDate as string);
 
         const requiredItems = getTrackableItemsFromQuote(request.items);
         if (requiredItems.size === 0) {
@@ -167,8 +159,8 @@ const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory
         const otherApprovedRequests = approvedRequests.filter(r => r.id !== request.id);
 
         otherApprovedRequests.forEach(otherReq => {
-            const otherStart = new Date(otherReq.rentalStartDate);
-            const otherEnd = new Date(otherReq.rentalEndDate);
+            const otherStart = new Date(otherReq.rentalStartDate as string);
+            const otherEnd = new Date(otherReq.rentalEndDate as string);
 
             const overlaps = isDateInRange(requestStart, otherStart, otherEnd) || 
                              isDateInRange(requestEnd, otherStart, otherEnd) || 
@@ -316,8 +308,8 @@ function LiveRentalsSection({ requests }: { requests: QuoteRequestWithId[] }) {
     const activeRentals = useMemo(() => {
         const today = new Date();
         return requests.filter(req => {
-            const startDate = new Date(req.rentalStartDate);
-            const endDate = new Date(req.rentalEndDate);
+            const startDate = new Date(req.rentalStartDate as string);
+            const endDate = new Date(req.rentalEndDate as string);
             return (req.status === 'Approved' || req.status === 'Paid') && today >= startDate && today <= endDate;
         });
     }, [requests]);
@@ -344,7 +336,7 @@ function LiveRentalsSection({ requests }: { requests: QuoteRequestWithId[] }) {
                                 <li key={rental.id} className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
                                     <div>
                                         <p className="font-semibold">{rental.customerName}</p>
-                                        <p className="text-sm text-muted-foreground">{new Date(rental.rentalStartDate).toLocaleDateString()} - {new Date(rental.rentalEndDate).toLocaleDateString()}</p>
+                                        <p className="text-sm text-muted-foreground">{new Date(rental.rentalStartDate as string).toLocaleDateString()} - {new Date(rental.rentalEndDate as string).toLocaleDateString()}</p>
                                     </div>
                                     <Badge variant={rental.status === 'Paid' ? 'default' : 'secondary'}>{rental.status === 'Paid' ? 'Paid' : 'Active'}</Badge>
                                 </li>
@@ -379,8 +371,8 @@ function RentalCalendar({ requests }: { requests: QuoteRequestWithId[] }) {
     const approvedRentals = useMemo(() => requests.filter(req => req.status === 'Approved' || req.status === 'Paid'), [requests]);
 
     const rentalEvents = useMemo(() => approvedRentals.flatMap(req => [
-        { date: new Date(req.rentalStartDate), type: 'start', customer: req.customerName },
-        { date: new Date(req.rentalEndDate), type: 'end', customer: req.customerName },
+        { date: new Date(req.rentalStartDate as string), type: 'start', customer: req.customerName },
+        { date: new Date(req.rentalEndDate as string), type: 'end', customer: req.customerName },
     ]), [approvedRentals]);
 
     const DayContent = useCallback((props: { date: Date }) => {
@@ -421,9 +413,7 @@ function RentalCalendar({ requests }: { requests: QuoteRequestWithId[] }) {
                 <CardDescription>Visual overview of rental start and end dates. Hover for details.</CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
-                 
-                    <Calendar numberOfMonths={2} components={{ Day: DayContent }} className="p-0" />
-                 
+                <Calendar numberOfMonths={2} components={{ Day: DayContent }} className="p-0" />
             </CardContent>
         </Card>
     );
@@ -435,7 +425,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
     const { items, rentalStartDate, rentalEndDate, stakitShield, customerName, customerEmail, dropOffAddress, collectionAddress, projectDescription, deliveryConfirmationTimestamp, status } = request;
 
     const calculation = useMemo(() => {
-        return calculateQuoteTotal(request.items, request.rentalStartDate, request.rentalEndDate, request.stakitShield);
+        return calculateQuoteTotal(request.items, request.rentalStartDate as string, request.rentalEndDate as string, request.stakitShield);
     }, [request]);
 
     const { total } = calculation;
@@ -507,7 +497,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <p className="font-semibold">Rental Period:</p>
-                            <p className="text-muted-foreground">{new Date(rentalStartDate).toLocaleDateString()} - {new Date(rentalEndDate).toLocaleDateString()}</p>
+                            <p className="text-muted-foreground">{new Date(rentalStartDate as string).toLocaleDateString()} - {new Date(rentalEndDate as string).toLocaleDateString()}</p>
                         </div>
                         <div>
                             <p className="font-semibold">Box Protection:</p>
@@ -527,7 +517,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
                     {deliveryConfirmationTimestamp ? (
                         <div>
                             <p className="font-semibold text-green-600 flex items-center gap-2"><CheckCircle /> Delivery Confirmed</p>
-                            <p className="text-muted-foreground">{new Date(deliveryConfirmationTimestamp).toLocaleString()}</p>
+                            <p className="text-muted-foreground">{new Date(deliveryConfirmationTimestamp as string).toLocaleString()}</p>
                         </div>
                     ) : (
                         <div>
@@ -563,12 +553,11 @@ function QuoteRequestList({ requests, allAvailabilities, onStatusChange, onEditQ
                                 <p className="text-xs text-muted-foreground">{request.projectDescription || `Request ID: ${request.id}`}</p>
                             </div>
                             <div className="hidden md:block text-muted-foreground">
-  {
-    typeof request.submittedDate === 'string'
-      ? new Date(request.submittedDate).toLocaleDateString()
-      : 'Pending'
-  }
-
+                            {
+                                request.submittedDate
+                                ? new Date(request.submittedDate as string).toLocaleDateString()
+                                : new Date().toLocaleDateString()
+                            }
                             </div>
                          </div>
                     </AccordionTrigger>
@@ -658,10 +647,10 @@ function ContactMessageList({ messages, onStatusChange }: { messages: ContactMes
                                         </div>
                                         <div className="hidden sm:block text-xs text-muted-foreground">
                                         {
-  typeof message.submittedDate === 'string'
-    ? new Date(message.submittedDate).toLocaleString()
-    : 'Pending'
-}
+                                            message.submittedDate
+                                            ? new Date(message.submittedDate as string).toLocaleString()
+                                            : new Date().toLocaleString()
+                                        }
                                         </div>
                                     </div>
                                 </AccordionTrigger>
@@ -879,7 +868,7 @@ function EvidenceUploader({ customerId, quoteId, category }: { customerId: strin
                     fileName: file.name,
                     mimeType: file.type,
                     category,
-                    uploadedAt: serverTimestamp(),
+                    uploadedAt: new Date().toISOString(),
                     uploadedBy: user.uid,
                 };
                 
@@ -949,11 +938,11 @@ function EvidenceSection({ customerId, quoteId }: { customerId: string, quoteId:
         return (
             <div className={cn("grid gap-4", category === 'report' ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4')}>
                 {items.sort((a,b) => {
-                    const dateA = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
-                    const dateB = b.uploadedAt?.toDate ? b.uploadedAt.toDate().getTime() : 0;
+                    const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+                    const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
                     return dateB - dateA;
                 }).map(item => {
-                    const displayDate = item.uploadedAt?.toDate ? item.uploadedAt.toDate().toLocaleString() : "Processing...";
+                    const displayDate = item.uploadedAt ? new Date(item.uploadedAt).toLocaleString() : "Processing...";
                     return (
                         <div key={item.id} className="group relative">
                             {item.mimeType.startsWith('image/') ? (
@@ -1017,7 +1006,7 @@ function AnalyticsDashboard({ requests, inventory, activity }: { requests: Quote
     const formatPrice = (price: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
 
     const analytics = useMemo(() => {
-        const paidQuotes = requests.filter(r => r.status === 'Paid' || r.status === 'Completed');
+        const paidQuotes = requests.filter(r => r.status === 'Paid' || r.status === 'Completed' || r.status === 'Delivered');
         const totalRevenue = paidQuotes.reduce((acc, r) => {
             const { total } = calculateQuoteTotal(r.items, r.rentalStartDate, r.rentalEndDate, r.stakitShield);
             return acc + total;
@@ -1050,8 +1039,6 @@ function AnalyticsDashboard({ requests, inventory, activity }: { requests: Quote
             retiredCrates,
         };
     }, [requests, activity]);
-
-    const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
 
     return (
         <div className="space-y-6">
@@ -1143,7 +1130,7 @@ export default function AdminDashboard() {
             ]);
 
             if (reqResult.success) {
-                const sortedRequests = reqResult.data.sort((a, b) => {
+                const sortedRequests = [...reqResult.data].sort((a, b) => {
                     const dateA = a.submittedDate ? new Date(a.submittedDate).getTime() : 0;
                     const dateB = b.submittedDate ? new Date(b.submittedDate).getTime() : 0;
                     return dateB - dateA;

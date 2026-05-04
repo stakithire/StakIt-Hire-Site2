@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebase } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { ContactMessage } from '@/lib/types';
 
@@ -53,7 +53,7 @@ export default function ContactPage() {
             const messageData: Omit<ContactMessage, 'id'> = {
                 ...data,
                 status: 'New',
-                submittedDate: serverTimestamp(),
+                submittedDate: new Date().toISOString(),
             };
             
             const messagesCollection = collection(firestore, 'contactMessages');

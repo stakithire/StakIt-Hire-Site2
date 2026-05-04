@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Badge } from '@/components/ui/badge';
@@ -76,7 +75,7 @@ function QuoteCard({ request }: { request: QuoteRequestWithId; }) {
             <CardHeader className="flex flex-row items-start bg-muted/50">
                 <div className="grid gap-0.5">
                 <CardTitle className="group flex items-center gap-2 text-lg font-headline">
-                    {request.projectDescription || `Request from ${new Date(request.submittedDate).toLocaleDateString()}`}
+                    {request.projectDescription || `Request from ${request.submittedDate ? new Date(request.submittedDate).toLocaleDateString() : 'Unknown Date'}`}
                     <Badge variant="outline" className={cn("whitespace-nowrap", statusStyles[displayStatus])}>
                         {displayStatus}
                     </Badge>
@@ -200,7 +199,11 @@ export default function TrackingPage() {
             </Card>
         ) : quoteRequests && quoteRequests.length > 0 ? (
           quoteRequests
-            .sort((a,b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime())
+            .sort((a,b) => {
+              const dateA = a.submittedDate ? new Date(a.submittedDate).getTime() : 0;
+              const dateB = b.submittedDate ? new Date(b.submittedDate).getTime() : 0;
+              return dateB - dateA;
+            })
             .map((request) => <QuoteCard key={request.id} request={request} />)
         ) : (
              <Card className="text-center">

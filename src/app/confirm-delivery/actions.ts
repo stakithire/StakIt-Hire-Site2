@@ -1,17 +1,26 @@
-
 'use server';
 
 import { getAdminFirestore } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { normaliseFirestoreData } from '@/lib/firestore-normaliser';
 import type { QuoteRequestWithId } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Fetches a quote request for confirmation, ensuring data is normalized.
+ */
 export async function getQuoteForConfirmation(
     quoteId: string,
     customerId: string
 ): Promise<{ success: true; data: QuoteRequestWithId } | { success: false; error: string }> {
     try {
         const adminFirestore = getAdminFirestore();
-        const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
+        const docRef = adminFirestore
+            .collection('customers')
+            .doc(customerId)
+            .collection('quoteRequests')
+            .doc(quoteId);
+            
         const docSnap = await docRef.get();
 
         if (!docSnap.exists) {
@@ -19,12 +28,12 @@ export async function getQuoteForConfirmation(
         }
 
         const data = docSnap.data();
+        if (!data) return { success: false, error: 'No data found.' };
+
+        // Normalize the data using our utility to handle Timestamps and complex types
         const quote = {
             id: docSnap.id,
-            ...data,
-            submittedDate: data.submittedDate?.toDate ? data.submittedDate.toDate().toISOString() : data.submittedDate,
-            rentalStartDate: data.rentalStartDate?.toDate ? data.rentalStartDate.toDate().toISOString() : data.rentalStartDate,
-            rentalEndDate: data.rentalEndDate?.toDate ? data.rentalEndDate.toDate().toISOString() : data.rentalEndDate,
+            ...normaliseFirestoreData(data),
         } as QuoteRequestWithId;
 
         return { success: true, data: quote };
@@ -34,16 +43,24 @@ export async function getQuoteForConfirmation(
     }
 }
 
+/**
+ * Updates the delivery confirmation timestamp for a quote.
+ */
 export async function confirmDelivery(
     quoteId: string,
     customerId: string
 ): Promise<{ success: true } | { success: false; error: string }> {
     try {
         const adminFirestore = getAdminFirestore();
-        const docRef = adminFirestore.collection('customers').doc(customerId).collection('quoteRequests').doc(quoteId);
+        const docRef = adminFirestore
+            .collection('customers')
+            .doc(customerId)
+            .collection('quoteRequests')
+            .doc(quoteId);
 
+        // Using server-side FieldValue for accurate record keeping
         await docRef.update({
-            deliveryConfirmationTimestamp: new Date().toISOString(),
+            deliveryConfirmationTimestamp: FieldValue.serverTimestamp(),
         });
 
         revalidatePath('/admin');

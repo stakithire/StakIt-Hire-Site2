@@ -1,7 +1,8 @@
-import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 
 /**
  * Detects Firestore FieldValue (serverTimestamp, deleteField, etc.)
+ * identifying them by their internal _methodName property.
  */
 function isFieldValue(value: any): boolean {
   return (
@@ -59,4 +60,3 @@ export function normaliseFirestoreData<T>(data: T): any {
 
   return data;
 }
-

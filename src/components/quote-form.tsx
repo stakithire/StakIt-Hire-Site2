@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,7 +38,7 @@ import { Service, QuoteRequest as QuoteRequestType } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from './ui/separator';
 import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from './ui/checkbox';
@@ -497,7 +496,7 @@ export function QuoteForm() {
             rentalEndDate: values.rentalEndDate.toISOString(),
             customerId: user.uid,
             status: 'Pending',
-            submittedDate: serverTimestamp(),
+            submittedDate: new Date().toISOString(),
         };
 
         const quoteRequestsRef = collection(firestore, 'customers', user.uid, 'quoteRequests');
