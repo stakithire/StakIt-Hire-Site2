@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +21,7 @@ import {
 } from '@/components/ui/popover';
 import { CalendarIcon, Loader2, Minus, Plus, ShoppingCart, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, add } from 'date-fns';
+import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import {
     boxHireServices,
@@ -36,9 +35,9 @@ import type { Service, QuoteRequestWithId } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import Link from 'next/link';
 import { calculateQuoteTotal, STAKIT_SHIELD_FEE } from '@/lib/quote-calculator';
-import { DialogFooter } from '../ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import {
   Select,
   SelectContent,
@@ -84,7 +83,7 @@ const formatPrice = (price?: number) => {
 function QuantitySelector({ form, itemId, itemName, type, price, followOnPrice, sizeOptions }: { form: UseFormReturn<QuoteEditFormValues>, itemId: string, itemName: string, type?: 'hire' | 'purchase', price: number, followOnPrice?: number, sizeOptions?: string[] }) {
     const { control, watch } = form;
     
-    const { fields, append, remove, update } = useFieldArray({
+    const { append, remove, update } = useFieldArray({
         control,
         name: "items"
     });
@@ -160,7 +159,6 @@ function ItemSelector({ item, form }: { item: Service, form: UseFormReturn<Quote
             
             {hasHire && hasPurchase ? (
                 <div className="mt-2 space-y-3">
-                    {/* Hire Section */}
                     <div className="flex flex-col items-stretch gap-3">
                         <div className="flex items-center justify-between">
                             <p>Hire: {formatPrice(item.hirePrice)}</p>
@@ -199,7 +197,6 @@ function ItemSelector({ item, form }: { item: Service, form: UseFormReturn<Quote
                     
                     <Separator />
 
-                    {/* Purchase Section */}
                     <div className="flex items-center justify-between">
                         <p>Purchase: {formatPrice(item.purchasePrice)}</p>
                         <QuantitySelector form={form} itemId={item.id} itemName={`${item.name} (Purchase)`} type="purchase" price={item.purchasePrice!} />
@@ -239,7 +236,7 @@ function ItemGroupOption({ item, groupName, form, showFollowOnPrice }: { item: S
                         <div className="space-y-2">
                              <div className="flex items-center justify-end gap-2">
                                 <p className="font-semibold text-right">Hire: {formatPrice(item.hirePrice)}</p>
-                                <QuantitySelector form={form} itemId={item.id} itemName={`${item.name} (Hire)`} type="hire" price={item.hirePrice!} followOnPrice={item.followOnPrice} />
+                                <QuantitySelector form={form} itemId={item.id} itemName={`${item.name} (Hire)`} type="hire" price={item.hirePrice!} followOnPrice={item.followOnPrice} sizeOptions={item.sizeOptions} />
                             </div>
                             <div className="flex items-center justify-end gap-2">
                                 <p className="font-semibold text-right">Buy: {formatPrice(item.purchasePrice)}</p>
@@ -415,17 +412,16 @@ export function EditQuoteForm({ quote, onSave, onCancel }: EditQuoteFormProps) {
         },
     });
 
-    const { isSameAddress, dropOffAddress, rentalStartDate } = form.watch();
+    const { isSameAddress, dropOffAddress, rentalStartDate, rentalEndDate } = form.watch();
 
     const showFollowOnPrice = useMemo(() => {
-        const { rentalStartDate, rentalEndDate } = form.getValues();
         if (rentalStartDate && rentalEndDate && rentalEndDate > rentalStartDate) {
             const diffTime = rentalEndDate.getTime() - rentalStartDate.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             return diffDays > 7;
         }
         return false;
-    }, [form]);
+    }, [rentalStartDate, rentalEndDate]);
 
     useEffect(() => {
         if (isSameAddress) {
@@ -571,5 +567,3 @@ export function EditQuoteForm({ quote, onSave, onCancel }: EditQuoteFormProps) {
         </Form>
     );
 }
-
-    

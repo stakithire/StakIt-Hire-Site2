@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -146,8 +145,8 @@ const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory
             return time >= start.getTime() && time <= end.getTime();
         };
 
-        const requestStart = new Date(request.rentalStartDate as string);
-        const requestEnd = new Date(request.rentalEndDate as string);
+        const requestStart = new Date(request.rentalStartDate);
+        const requestEnd = new Date(request.rentalEndDate);
 
         const requiredItems = getTrackableItemsFromQuote(request.items);
         if (requiredItems.size === 0) {
@@ -159,8 +158,8 @@ const calculateAllAvailabilities = (allRequests: QuoteRequestWithId[], inventory
         const otherApprovedRequests = approvedRequests.filter(r => r.id !== request.id);
 
         otherApprovedRequests.forEach(otherReq => {
-            const otherStart = new Date(otherReq.rentalStartDate as string);
-            const otherEnd = new Date(otherReq.rentalEndDate as string);
+            const otherStart = new Date(otherReq.rentalStartDate);
+            const otherEnd = new Date(otherReq.rentalEndDate);
 
             const overlaps = isDateInRange(requestStart, otherStart, otherEnd) || 
                              isDateInRange(requestEnd, otherStart, otherEnd) || 
@@ -264,37 +263,35 @@ function OverviewSection({ requests, messages }: { requests: QuoteRequestWithId[
                         <BarChart data={chartData}>
                             <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                             <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} allowDecimals={false} />
-                            <TooltipProvider>
-                                <RechartsTooltip
-                                    content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                        return (
-                                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                                            <div className="grid grid-cols-2 gap-2">
-                                            <div className="flex flex-col">
-                                                <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                                Status
-                                                </span>
-                                                <span className="font-bold text-muted-foreground">
-                                                {payload[0].payload.name}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                                Total
-                                                </span>
-                                                <span className="font-bold">
-                                                {payload[0].value}
-                                                </span>
-                                            </div>
-                                            </div>
+                            <RechartsTooltip
+                                content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                    return (
+                                    <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                            Status
+                                            </span>
+                                            <span className="font-bold text-muted-foreground">
+                                            {payload[0].payload.name}
+                                            </span>
                                         </div>
-                                        )
-                                    }
-                                    return null
-                                    }}
-                                />
-                            </TooltipProvider>
+                                        <div className="flex flex-col">
+                                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                            Total
+                                            </span>
+                                            <span className="font-bold">
+                                            {payload[0].value}
+                                            </span>
+                                        </div>
+                                        </div>
+                                    </div>
+                                    )
+                                }
+                                return null
+                                }}
+                            />
                             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -308,8 +305,8 @@ function LiveRentalsSection({ requests }: { requests: QuoteRequestWithId[] }) {
     const activeRentals = useMemo(() => {
         const today = new Date();
         return requests.filter(req => {
-            const startDate = new Date(req.rentalStartDate as string);
-            const endDate = new Date(req.rentalEndDate as string);
+            const startDate = new Date(req.rentalStartDate);
+            const endDate = new Date(req.rentalEndDate);
             return (req.status === 'Approved' || req.status === 'Paid') && today >= startDate && today <= endDate;
         });
     }, [requests]);
@@ -336,7 +333,7 @@ function LiveRentalsSection({ requests }: { requests: QuoteRequestWithId[] }) {
                                 <li key={rental.id} className="flex justify-between items-center p-2 rounded-lg bg-muted/50">
                                     <div>
                                         <p className="font-semibold">{rental.customerName}</p>
-                                        <p className="text-sm text-muted-foreground">{new Date(rental.rentalStartDate as string).toLocaleDateString()} - {new Date(rental.rentalEndDate as string).toLocaleDateString()}</p>
+                                        <p className="text-sm text-muted-foreground">{new Date(rental.rentalStartDate).toLocaleDateString()} - {new Date(rental.rentalEndDate).toLocaleDateString()}</p>
                                     </div>
                                     <Badge variant={rental.status === 'Paid' ? 'default' : 'secondary'}>{rental.status === 'Paid' ? 'Paid' : 'Active'}</Badge>
                                 </li>
@@ -371,8 +368,8 @@ function RentalCalendar({ requests }: { requests: QuoteRequestWithId[] }) {
     const approvedRentals = useMemo(() => requests.filter(req => req.status === 'Approved' || req.status === 'Paid'), [requests]);
 
     const rentalEvents = useMemo(() => approvedRentals.flatMap(req => [
-        { date: new Date(req.rentalStartDate as string), type: 'start', customer: req.customerName },
-        { date: new Date(req.rentalEndDate as string), type: 'end', customer: req.customerName },
+        { date: new Date(req.rentalStartDate), type: 'start', customer: req.customerName },
+        { date: new Date(req.rentalEndDate), type: 'end', customer: req.customerName },
     ]), [approvedRentals]);
 
     const DayContent = useCallback((props: { date: Date }) => {
@@ -425,7 +422,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
     const { items, rentalStartDate, rentalEndDate, stakitShield, customerName, customerEmail, dropOffAddress, collectionAddress, projectDescription, deliveryConfirmationTimestamp, status } = request;
 
     const calculation = useMemo(() => {
-        return calculateQuoteTotal(request.items, request.rentalStartDate as string, request.rentalEndDate as string, request.stakitShield);
+        return calculateQuoteTotal(request.items, request.rentalStartDate, request.rentalEndDate, request.stakitShield);
     }, [request]);
 
     const { total } = calculation;
@@ -497,7 +494,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <p className="font-semibold">Rental Period:</p>
-                            <p className="text-muted-foreground">{new Date(rentalStartDate as string).toLocaleDateString()} - {new Date(rentalEndDate as string).toLocaleDateString()}</p>
+                            <p className="text-muted-foreground">{new Date(rentalStartDate).toLocaleDateString()} - {new Date(rentalEndDate).toLocaleDateString()}</p>
                         </div>
                         <div>
                             <p className="font-semibold">Box Protection:</p>
@@ -517,7 +514,7 @@ function QuoteRequestDetails({ request, availability, onDamageLogged }: { reques
                     {deliveryConfirmationTimestamp ? (
                         <div>
                             <p className="font-semibold text-green-600 flex items-center gap-2"><CheckCircle /> Delivery Confirmed</p>
-                            <p className="text-muted-foreground">{new Date(deliveryConfirmationTimestamp as string).toLocaleString()}</p>
+                            <p className="text-muted-foreground">{new Date(deliveryConfirmationTimestamp).toLocaleString()}</p>
                         </div>
                     ) : (
                         <div>
@@ -555,7 +552,7 @@ function QuoteRequestList({ requests, allAvailabilities, onStatusChange, onEditQ
                             <div className="hidden md:block text-muted-foreground">
                             {
                                 request.submittedDate
-                                ? new Date(request.submittedDate as string).toLocaleDateString()
+                                ? new Date(request.submittedDate).toLocaleDateString()
                                 : new Date().toLocaleDateString()
                             }
                             </div>
@@ -648,7 +645,7 @@ function ContactMessageList({ messages, onStatusChange }: { messages: ContactMes
                                         <div className="hidden sm:block text-xs text-muted-foreground">
                                         {
                                             message.submittedDate
-                                            ? new Date(message.submittedDate as string).toLocaleString()
+                                            ? new Date(message.submittedDate).toLocaleString()
                                             : new Date().toLocaleString()
                                         }
                                         </div>
@@ -716,7 +713,7 @@ function InventoryManagement({ initialInventory, onSave, onRetire }: { initialIn
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, -1)}><Minus className="h-4 w-4"/></Button>
                                 <Input value={item.quantity} className="h-8 w-16 text-center" readOnly />
-                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, 1)}><Plus className="h-4 w-4"/></Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(1)}><Plus className="h-4 w-4"/></Button>
                                 <Button size="sm" onClick={() => handleSave(item)} disabled={isSaving === item.id}>
                                     {isSaving === item.id && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                     Save
