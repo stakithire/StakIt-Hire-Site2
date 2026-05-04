@@ -6,24 +6,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckCircle, XCircle, Clock, Loader2, User, Calendar as CalendarIcon, Hash, AlertTriangle, Package, BellRing, BarChart2, Users, Wrench, Search, MailQuestion, Archive, Eye, Warehouse, Minus, Plus, GanttChartSquare, ClipboardList, MessageSquare, Shield, Circle, ArrowDown, ArrowUp, Info, Edit, UploadCloud, Paperclip, Image as ImageIcon, QrCode, TrendingUp, TrendingDown, DollarSign, BarChartBig, Trash2 } from 'lucide-react';
+import { MoreHorizontal, CheckCircle, XCircle, Clock, Loader2, User, Calendar as CalendarIcon, Package, BellRing, BarChart2, Users, Wrench, Archive, Eye, Warehouse, Minus, Plus, GanttChartSquare, ClipboardList, MessageSquare, Circle, Edit, UploadCloud, Paperclip, QrCode, TrendingUp, DollarSign, BarChartBig, Trash2, AlertTriangle, MailQuestion } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdmin, useUser, useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import type { OrderEvidence, QuoteRequestWithId, ContactMessageWithId, InventoryItem, OrderEvidenceWithId, InventoryActivityWithId } from '@/lib/types';
 import { getAdminQuoteRequests, updateQuoteStatus, getContactMessages, updateMessageStatus, getInventory, setInventoryItem, updateQuoteDetails, getInventoryActivity, logCrateRetirement } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, PieChart, Pie, Cell, Legend } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 import { Calendar } from '@/components/ui/calendar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from '@/components/ui/input';
-import { boxHireServices, services as otherServices, protectionAddOns, tvProtectionAddOns, pricingBundles, inventoryTrackedTvProtectionAddOns, tvProtectorSizeToIdMap, inventoryTrackedReusableProtectors, reusableProtectorSizeToIdMap, inventoryTrackedMattressProtectors } from '@/lib/data';
+import { boxHireServices, services as otherServices, pricingBundles, inventoryTrackedTvProtectionAddOns, tvProtectorSizeToIdMap, inventoryTrackedReusableProtectors, reusableProtectorSizeToIdMap, inventoryTrackedMattressProtectors } from '@/lib/data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { calculateQuoteTotal } from '@/lib/quote-calculator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { EditQuoteForm } from '@/components/admin/edit-quote-form';
 import { collection } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Image from 'next/image';
 import { Progress } from '@/components/ui/progress';
@@ -57,7 +57,7 @@ const inventoryStatusStyles: { [key: string]: { icon: React.ElementType, style: 
 
 const getTrackableItemsFromQuote = (items: QuoteRequestWithId['items']): Map<string, number> => {
     const trackableMap = new Map<string, number>();
-    const allServicesAndBoxes = [...boxHireServices, ...otherServices, ...protectionAddOns, ...tvProtectionAddOns, ...inventoryTrackedTvProtectionAddOns, ...inventoryTrackedReusableProtectors];
+    const allServicesAndBoxes = [...boxHireServices, ...otherServices, ...inventoryTrackedMattressProtectors, ...inventoryTrackedTvProtectionAddOns, ...inventoryTrackedReusableProtectors];
 
     const getBundleComponents = (bundleId: string): { itemId: string; quantity: number }[] => {
         const bundle = pricingBundles.find(b => b.id === bundleId);
@@ -294,7 +294,7 @@ function OverviewSection({ requests, messages }: { requests: QuoteRequestWithId[
                             />
                             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>
-                    </ResponsiveContainer>
+                    </仪式ResponsiveContainer>
                 </CardContent>
             </Card>
         </div>
@@ -713,7 +713,7 @@ function InventoryManagement({ initialInventory, onSave, onRetire }: { initialIn
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, -1)}><Minus className="h-4 w-4"/></Button>
                                 <Input value={item.quantity} className="h-8 w-16 text-center" readOnly />
-                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(1)}><Plus className="h-4 w-4"/></Button>
+                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(item.id, 1)}><Plus className="h-4 w-4"/></Button>
                                 <Button size="sm" onClick={() => handleSave(item)} disabled={isSaving === item.id}>
                                     {isSaving === item.id && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                     Save
@@ -999,7 +999,7 @@ function EvidenceSection({ customerId, quoteId }: { customerId: string, quoteId:
     );
 }
 
-function AnalyticsDashboard({ requests, inventory, activity }: { requests: QuoteRequestWithId[]; inventory: InventoryItem[]; activity: InventoryActivityWithId[]; }) {
+function AnalyticsDashboard({ requests, activity }: { requests: QuoteRequestWithId[]; inventory: InventoryItem[]; activity: InventoryActivityWithId[]; }) {
     const formatPrice = (price: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
 
     const analytics = useMemo(() => {
@@ -1285,7 +1285,7 @@ export default function AdminDashboard() {
                     <LiveRentalsSection requests={requests} />
                  </TabsContent>
                  <TabsContent value="analytics" className="mt-6">
-                    <AnalyticsDashboard requests={requests} inventory={inventory} activity={inventoryActivity} />
+                    <AnalyticsDashboard requests={requests} inventory={mergedInventory} activity={inventoryActivity} />
                  </TabsContent>
                  <TabsContent value="requests" className="mt-6">
                     <Card>
